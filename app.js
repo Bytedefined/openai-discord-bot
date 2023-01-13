@@ -97,7 +97,7 @@ client.on("messageCreate", async message => {
 
         try {
             const messages = await message.channel.messages.fetch({limit: 3})
-            const lastMessages = messages.filter(m => m.author.id === message.author.id).map(m => m.content)
+            const lastMessages = messages.filter(m => m.author.id === message.author.id || m.author.id === process.env.DISCORD_BOT_ID).map(m => m.content)
 
             let prompt = `AI: ${lastMessages.join("\nUser: ")}\nUser: ${message.content}\nAI: `
             const response = await openai.createCompletion({
@@ -108,9 +108,9 @@ client.on("messageCreate", async message => {
             })
 
             try {
-                message.reply(response.data.choices[0].text)
+                await message.reply(response.data.choices[0].text)
             } catch {
-                return message.channel.send("Yikes! It looks like something went wrong... Perhaps try again?")
+                await message.channel.send(`<@${message.author.id}>, ${response.data.choices[0].text}`)
             }
         } catch(err) {
             return message.channel.send("Yikes! It looks like something went wrong... Perhaps try again?")
@@ -122,5 +122,5 @@ client.on("messageCreate", async message => {
 try {
     client.login(process.env.DISCORD_BOT_TOKEN)
 } catch(err) {
-    console.log(err)
+    console.error(err)
 }

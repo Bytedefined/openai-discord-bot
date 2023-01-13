@@ -1,6 +1,6 @@
 {
   "name": "openai-discord-bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Discord bot that utilises GPT-3 and other APIs from OpenAI. This Discord bot brings the OpenAI experience right into your Discord server or direct messages.",
   "main": "app.js",
   "repository": "https://github.com/Bytedefined/ai-discord-bot",
