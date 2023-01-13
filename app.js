@@ -24,19 +24,35 @@ const rest = new Discord.REST({version: "10"}).setToken(
             body: [
                 {
                     name: "ping",
-                    description: "Replies with Pong!"
+                    description: "Replies with Pong, as well as the Discord bot's current response time."
                 },
                 {
-                    name: "settings",
-                    description: "Configure and fine tune the settings of the bot to your liking, for your account."
+                    name: "settings-model",
+                    description: "Configure model-type settings of the bot for your account."
+                },
+                {
+                    name: "settings-privacy",
+                    description: "Configure privacy settings of the bot for your account."
                 },
                 {
                     name: "generate-image",
-                    description: "Generates an image from a prompt",
+                    description: "Generates an image based on a provided prompt using DALL-E.",
                     options: [
                         {
                             name: "prompt",
-                            description: "The prompt to generate the image from",
+                            description: "The prompt to generate the image from.",
+                            type: 3,
+                            required: true
+                        }
+                    ]
+                },
+                {
+                    name: "chat",
+                    description: "Talk with your chosen OpenAI model. Ask questions, create assignments, write code, etc.",
+                    options: [
+                        {
+                            name: "prompt",
+                            description: "Absolutely anything.",
                             type: 3,
                             required: true
                         }
@@ -69,11 +85,33 @@ const client = new Discord.Client({
 client.on(Discord.Events.InteractionCreate, async interaction => {
     try {
         if(!interaction.isCommand()) return
+
+        const database = JSON.parse(fs.readFileSync("database.json"))
+        const user = database.users.find(user => user.id === interaction.user.id)
+
+        if(!user) {
+            database.users.push({
+                id: interaction.user.id,
+                model: "text-davinci-003",
+                responsesHidden: false
+            })
+            fs.writeFileSync("database.json", JSON.stringify(database, null, 4))
+        }
+
         if(interaction.commandName === "ping") {
-            await interaction.reply(`Pong! \`${client.ws.ping}ms\``)
+            await interaction.deferReply(
+                {
+                    ephemeral: user.responsesHidden
+                }
+            )
+            await interaction.editReply(`Pong! \`Response Time: ${client.ws.ping}ms\``)
         }
         if(interaction.commandName === "generate-image") {
-            await interaction.deferReply()
+            await interaction.deferReply(
+                {
+                    ephemeral: user.responsesHidden
+                }
+            )
 
             const prompt = interaction.options.getString("prompt")
             const response = await openai.createImage({
@@ -83,19 +121,105 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
             })
 
             await interaction.editReply(response.data.data[0].url)
-            await interaction.followUp({
-                content: "Here is your AI generated image!"
-            })
         }
-        if(interaction.commandName === "settings") {
-            await interaction.deferReply()
+        if(interaction.commandName === "settings-privacy") {
+            await interaction.deferReply(
+                {
+                    ephemeral: true
+                }
+            )
 
             const database = JSON.parse(fs.readFileSync("database.json"))
             const user = database.users.find(user => user.id === interaction.user.id)
             if(!user) {
                 database.users.push({
                     id: interaction.user.id,
-                    model: "text-davinci-003"
+                    model: "text-davinci-003",
+                    responsesHidden: false
+                })
+                fs.writeFileSync("database.json", JSON.stringify(database, null, 4))
+            }
+
+            const row = new Discord.ActionRowBuilder()
+                .addComponents(
+                    new Discord.StringSelectMenuBuilder()
+                        .setCustomId("responsesHiddenType")
+                        .setPlaceholder(user.responsesHidden ? "Responses Hidden" : "Responses Shown")
+                        .setMinValues(1)
+                        .setMaxValues(1)
+                        .addOptions([
+                            {
+                                label: "Responses Shown",
+                                value: "false",
+                                description: "Public Discord bot responses to server members."
+                            },
+                            {
+                                label: "Responses Hidden",
+                                value: "true",
+                                description: "Hidden Discord bot responses to server members."
+                            }
+                        ]),
+                )
+
+            interaction.editReply({
+                content: `Privacy Settings`,
+                components: [row]
+            })
+
+            const filter = i => i.customId === 'responsesHiddenType' && i.user.id === interaction.user.id
+            const collector = interaction.channel.createMessageComponentCollector({ filter })
+
+            collector.on('collect', async i => {
+                if (i.customId === 'responsesHiddenType') {
+                    await i.update({
+                        content: `Discord bot responses are now \`${JSON.parse(i.values.join(', ')) ? 'hidden' : 'public'}\`.`,
+                        components: []
+                    })
+
+                    fs.readFile("./database.json", "utf8", function(err, data) {
+                        if(err) {
+                            console.error(err)
+                        } else {
+                            let database = JSON.parse(data)
+                            let user = database.users.find(function(user) {
+                                return user.id === interaction.user.id
+                            })
+
+                            if(user) user.responsesHidden = JSON.parse(i.values.join(', '))
+                            else database.users.push({
+                                id: interaction.user.id,
+                                model: "text-davinci-003",
+                                responsesHidden: JSON.parse(i.values.join(', '))
+                            })
+
+                            fs.writeFile("./database.json", JSON.stringify(database), function(err) {
+                                if(err) console.error(err)
+                            })
+                        }
+                    })
+                }
+            })
+
+            collector.on('end', collected => {
+                if(collected.size === 0) {
+                    interaction.deleteReply()
+                }
+            })
+        }
+        if(interaction.commandName === "settings-model") {
+            await interaction.deferReply(
+                {
+                    ephemeral: true
+                }
+            )
+
+            const database = JSON.parse(fs.readFileSync("database.json"))
+            const user = database.users.find(user => user.id === interaction.user.id)
+            if(!user) {
+                database.users.push({
+                    id: interaction.user.id,
+                    model: "text-davinci-003",
+                    responsesHidden: false
                 })
                 fs.writeFileSync("database.json", JSON.stringify(database, null, 4))
             }
@@ -123,31 +247,23 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
                                 value: "code-davinci-001",
                                 description: "An older version of the code-davinci model type."
                             }
-                        ])
+                        ]),
                 )
 
-            fs.readFile("./database.json", "utf8", function(err, data) {
-                if(err) {
-                    console.error(err)
-                } else {
-                    let database = JSON.parse(data)
-                    let user = database.users.find(function(user) {
-                        return user.id === interaction.user.id
-                    })
-
-                    interaction.editReply({
-                        content: `Personal Settings for: ${interaction.user.tag}`,
-                        components: [row]
-                    })
-                }
+            interaction.editReply({
+                content: `OpenAI Model Settings`,
+                components: [row]
             })
 
             const filter = i => i.customId === 'modelType' && i.user.id === interaction.user.id
-            const collector = interaction.channel.createMessageComponentCollector({ filter, time: 10000 })
+            const collector = interaction.channel.createMessageComponentCollector({ filter })
 
             collector.on('collect', async i => {
                 if (i.customId === 'modelType') {
-                    await i.update({ content: `Switched model to \`${i.values.join(', ')}\` for ${interaction.user.tag}.`, components: [] })
+                    await i.update({
+                        content: `Switched OpenAI model-type to \`${i.values.join(', ')}\`.`,
+                        components: []
+                    })
 
                     fs.readFile("./database.json", "utf8", function(err, data) {
                         if(err) {
@@ -161,7 +277,8 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
                             if(user) user.model = i.values.join(', ')
                             else database.users.push({
                                 id: interaction.user.id,
-                                model: i.values.join(', ')
+                                model: i.values.join(', '),
+                                responsesHidden: false
                             })
 
                             fs.writeFile("./database.json", JSON.stringify(database), function(err) {
@@ -178,6 +295,37 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
                 }
             })
         }
+        if(interaction.commandName === "chat") {
+            await interaction.deferReply(
+                {
+                    ephemeral: user.responsesHidden
+                }
+            )
+
+            if(interaction.channel.id === process.env.DISCORD_BOT_TEXT_CHANNEL_ID.toString() || interaction.channel.id === process.env.DISCORD_BOT_TEXT_CHANNEL_ID_SECONDARY.toString() || !interaction.guild) {
+                try {
+                    const messages = await interaction.channel.messages.fetch({ limit: 3 })
+                    const lastMessages = messages.filter(m => m.author.id === interaction.user.id).map(m => m.content)
+                    const response = await openai.createCompletion({
+                        model: user.model,
+                        prompt: user.model === "text-davinci-003" ? `AI: ${lastMessages.join("\nUser: ")}\nUser: ${interaction.options.getString("prompt")}\nAI: ` : `${interaction.options.getString("prompt")}`,
+                        max_tokens: 350,
+                        temperature: 0.9
+                    })
+
+                    if(user.model === "text-davinci-003") {
+                        await interaction.editReply(response.data.choices[0].text)
+                    } else if(user.model === "code-davinci-002" || user.model === "code-davinci-001") {
+                       await interaction.editReply(`\`\`\`\n${response.data.choices[0].text}\n\`\`\``)
+                    } else {
+                        await interaction.editReply(response.data.choices[0].text)
+                    }
+                } catch(err) {
+                    return interaction.editReply("Yikes! It looks like something went wrong... Perhaps try again?")
+                    console.error(err)
+                }
+            }
+        }
     } catch(err) {
         console.error(err)
         await interaction.editReply({
@@ -187,58 +335,7 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
 })
 client.on("ready", () => {
     console.log(`Logged in as ${client.user.tag}!`)
-})
-client.on("messageCreate", async message => {
-    if(message.channel.id === process.env.DISCORD_BOT_TEXT_CHANNEL_ID.toString() || message.channel.id === process.env.DISCORD_BOT_TEXT_CHANNEL_ID_SECONDARY.toString() || !message.guild) {
-        if(message.author.bot) return
-
-        try {
-            const database = JSON.parse(fs.readFileSync("database.json"))
-            const user = database.users.find(user => user.id === message.author.id)
-            if(!user) {
-                database.users.push({
-                    id: message.author.id,
-                    model: "text-davinci-003"
-                })
-                fs.writeFileSync("database.json", JSON.stringify(database, null, 4))
-            }
-
-            const messages = await message.channel.messages.fetch({limit: 3})
-            const lastMessages = messages.filter(m => m.author.id === message.author.id || m.author.id === process.env.DISCORD_BOT_ID).map(m => m.content)
-
-            let promptText = `AI: ${lastMessages.join("\nUser: ")}\nUser: ${message.content}\nAI: `
-            let promptCode = `${message.content}`
-            const response = await openai.createCompletion({
-                model: user.model,
-                prompt: user.model === "text-davinci-003" ? promptText : promptCode,
-                max_tokens: 350,
-                temperature: 0.9
-            })
-
-            if(user.model === "text-davinci-003") {
-                try {
-                    await message.reply(response.data.choices[0].text)
-                } catch {
-                    await message.channel.send(`<@${message.author.id}>, ${response.data.choices[0].text}`)
-                }
-            } else if(user.model === "code-davinci-002" || user.model === "code-davinci-001") {
-                try {
-                    await message.reply(`\`\`\`\n${response.data.choices[0].text}\n\`\`\``)
-                } catch {
-                    await message.channel.send(`<@${message.author.id}>, \n\n \`\`\`${response.data.choices[0].text}\`\`\``)
-                }
-            } else {
-                try {
-                    await message.reply(response.data.choices[0].text)
-                } catch {
-                    await message.channel.send(`<@${message.author.id}>, ${response.data.choices[0].text}`)
-                }
-            }
-        } catch(err) {
-            return message.channel.send("Yikes! It looks like something went wrong... Perhaps try again?")
-            console.error(err)
-        }
-    }
+    client.user.setActivity("Made by Bytedefined#3435", { type: "PLAYING" })
 })
 
 try {
