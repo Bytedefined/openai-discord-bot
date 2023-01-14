@@ -28,7 +28,7 @@ const rest = new Discord.REST({version: "10"}).setToken(
                 },
                 {
                     name: "settings-model",
-                    description: "Configure model-type settings of the bot for your account."
+                    description: "Configure model settings of the bot for your account."
                 },
                 {
                     name: "settings-privacy",
@@ -36,7 +36,7 @@ const rest = new Discord.REST({version: "10"}).setToken(
                 },
                 {
                     name: "generate-image",
-                    description: "Generates an image based on a provided prompt using DALL-E.",
+                    description: "Generates an image response based on a provided prompt using DALL-E.",
                     options: [
                         {
                             name: "prompt",
@@ -48,7 +48,7 @@ const rest = new Discord.REST({version: "10"}).setToken(
                 },
                 {
                     name: "chat",
-                    description: "Talk with your chosen OpenAI model. Ask questions, create assignments, write code, etc.",
+                    description: "Generates a text response based on a provided prompt using your chosen OpenAI model.",
                     options: [
                         {
                             name: "prompt",

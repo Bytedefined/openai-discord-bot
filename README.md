@@ -2,7 +2,7 @@
   <strong>Bytedefined - openai-discord-bot</strong>
 </h1>
 <p align="center">
-  <strong>A Discord bot that utilises GPT-3 and other APIs from OpenAI. This Discord bot brings the OpenAI experience right into your Discord server or direct messages.</strong>
+  <strong>A Discord bot that utilises GPT-3 and other models from OpenAI. This Discord bot brings the OpenAI experience right into your Discord server and direct messages.</strong>
 </p>
 
 ---
@@ -70,12 +70,17 @@ To use the OpenAI Discord bot, you will need to invite the bot to your Discord s
 
 Make sure to replace CLIENT_ID in the above URL with the client ID of the Discord bot. You can find the client ID in the Discord developer portal.
 
-Afterwards you can use the following Discord slash commands to interact with the OpenAI Discord bot:
+Afterwards you can use the following Discord interaction slash commands to interact with the OpenAI Discord bot:
 
-| Command         | Description                              |
-|:----------------|:-----------------------------------------|
-| /generate-image | Generates an image using a given prompt. |
+| Interaction Slash Command | Description                                                                          |
+|:--------------------------|:-------------------------------------------------------------------------------------|
+| `/generate-image :prompt` | Generates an image based on a provided prompt using DALL-E.                          |
+| `/chat :prompt`           | Generates a text response based on a provided prompt using your chosen OpenAI model. |
+| `/help`                   | Displays the Discord bot's help menu.                                                |
+| `/ping`                   | Replies with Pong, as well as the Discord bot's current response time.               |
+| `/settings-privacy`       | Configure privacy settings of the Discord bot for your account.                      |
+| `/settings-model`         | Configure model settings of the Discord bot for your account.                        |
 
-For text responses, the OpenAI Discord bot will automatically respond in the same Discord server channel or direct message that you send a message in, with a text-based response.
 
-**Note:** *The OpenAI Discord bot will only respond to messages in the Discord server text channel that is specified in your `DISCORD_BOT_TEXT_CHANNEL_ID` and/or `DISCORD_BOT_TEXT_CHANNEL_ID_SECONDARY` environment variable(s).*
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details.
