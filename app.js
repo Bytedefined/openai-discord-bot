@@ -302,28 +302,26 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
                 }
             )
 
-            if(interaction.channel.id === process.env.DISCORD_BOT_TEXT_CHANNEL_ID.toString() || interaction.channel.id === process.env.DISCORD_BOT_TEXT_CHANNEL_ID_SECONDARY.toString() || !interaction.guild) {
-                try {
-                    const messages = await interaction.channel.messages.fetch({ limit: 3 })
-                    const lastMessages = messages.filter(m => m.author.id === interaction.user.id).map(m => m.content)
-                    const response = await openai.createCompletion({
-                        model: user.model,
-                        prompt: user.model === "text-davinci-003" ? `AI: ${lastMessages.join("\nUser: ")}\nUser: ${interaction.options.getString("prompt")}\nAI: ` : `${interaction.options.getString("prompt")}`,
-                        max_tokens: 350,
-                        temperature: 0.9
-                    })
+            try {
+                const messages = await interaction.channel.messages.fetch({ limit: 3 })
+                const lastMessages = messages.filter(m => m.author.id === interaction.user.id).map(m => m.content)
+                const response = await openai.createCompletion({
+                    model: user.model,
+                    prompt: user.model === "text-davinci-003" ? `AI: ${lastMessages.join("\nUser: ")}\nUser: ${interaction.options.getString("prompt")}\nAI: ` : `${interaction.options.getString("prompt")}`,
+                    max_tokens: 350,
+                    temperature: 0.9
+                })
 
-                    if(user.model === "text-davinci-003") {
-                        await interaction.editReply(response.data.choices[0].text)
-                    } else if(user.model === "code-davinci-002" || user.model === "code-davinci-001") {
-                       await interaction.editReply(`\`\`\`\n${response.data.choices[0].text}\n\`\`\``)
-                    } else {
-                        await interaction.editReply(response.data.choices[0].text)
-                    }
-                } catch(err) {
-                    return interaction.editReply("Yikes! It looks like something went wrong... Perhaps try again?")
-                    console.error(err)
+                if(user.model === "text-davinci-003") {
+                    await interaction.editReply(response.data.choices[0].text)
+                } else if(user.model === "code-davinci-002" || user.model === "code-davinci-001") {
+                   await interaction.editReply(`\`\`\`\n${response.data.choices[0].text}\n\`\`\``)
+                } else {
+                    await interaction.editReply(response.data.choices[0].text)
                 }
+            } catch(err) {
+                return interaction.editReply("Yikes! It looks like something went wrong... Perhaps try again?")
+                console.error(err)
             }
         }
     } catch(err) {
