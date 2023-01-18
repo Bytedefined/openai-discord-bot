@@ -305,19 +305,20 @@ client.on(Discord.Events.InteractionCreate, async interaction => {
             try {
                 const messages = await interaction.channel.messages.fetch({ limit: 3 })
                 const lastMessages = messages.filter(m => m.author.id === interaction.user.id).map(m => m.content)
+                const prompt = user.model === "text-davinci-003" ? `AI: ${lastMessages.join("\nUser: ")}\nUser: ${interaction.options.getString("prompt")}\nAI: ` : `${interaction.options.getString("prompt")}`
                 const response = await openai.createCompletion({
                     model: user.model,
-                    prompt: user.model === "text-davinci-003" ? `AI: ${lastMessages.join("\nUser: ")}\nUser: ${interaction.options.getString("prompt")}\nAI: ` : `${interaction.options.getString("prompt")}`,
+                    prompt: prompt,
                     max_tokens: 350,
                     temperature: 0.9
                 })
 
                 if(user.model === "text-davinci-003") {
-                    await interaction.editReply(response.data.choices[0].text)
+                    await interaction.editReply(response.data.choices[0].text + `\n\n In response to: \`${interaction.options.getString("prompt")}\``)
                 } else if(user.model === "code-davinci-002" || user.model === "code-davinci-001") {
-                   await interaction.editReply(`\`\`\`\n${response.data.choices[0].text}\n\`\`\``)
+                    await interaction.editReply(`\`\`\`\n${response.data.choices[0].text}\n\`\`\`` + `\n\nIn response to: \`${interaction.options.getString("prompt")}\``)
                 } else {
-                    await interaction.editReply(response.data.choices[0].text)
+                    await interaction.editReply(response.data.choices[0].text + `\n\nIn response to: \`${interaction.options.getString("prompt")}\``)
                 }
             } catch(err) {
                 return interaction.editReply("Yikes! It looks like something went wrong... Perhaps try again?")
